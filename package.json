@@ -1,0 +1,251 @@
+{
+  "name": "line-count-explorer",
+  "displayName": "Line Count Explorer",
+  "description": "Visualize file and directory line/token counts directly in the VS Code explorer, helping you identify large files and manage project complexity.",
+  "version": "1.0.0",
+  "publisher": "dmytrove",
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#5c2d91",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Productivity",
+    "Visualization"
+  ],
+  "keywords": [
+    "line count",
+    "file size",
+    "token count",
+    "explorer",
+    "productivity",
+    "code analysis"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "lineCountExplorer.openConfigUI",
+        "title": "Line Count Explorer: Open Configuration UI"
+      },
+      {
+        "command": "lineCountExplorer.refreshCounts",
+        "title": "Line Count Explorer: Refresh Counts",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "lineCountExplorer.quickSelectPreset",
+        "title": "Line Count Explorer: Quick Select Preset"
+      },
+      {
+        "command": "lineCountExplorer.toggleExtension",
+        "title": "Line Count Explorer: Toggle Extension"
+      },
+      {
+        "command": "lineCountExplorer.saveCurrentConfigAsPreset",
+        "title": "Line Count Explorer: Save Current Config as Preset"
+      },
+      {
+        "command": "lineCountExplorer.managePresets",
+        "title": "Line Count Explorer: Manage Presets"
+      },
+      {
+        "command": "lineCountExplorer.quickSelectIndicatorSet",
+        "title": "Line Count Explorer: Change Indicator Symbol Set"
+      },
+      {
+        "command": "lineCountExplorer.setCustomThresholds",
+        "title": "Line Count Explorer: Set Custom Thresholds"
+      },
+      {
+        "command": "lineCountExplorer.importSymbolSetsFromCsv",
+        "title": "Line Count Explorer: Import Symbol Sets from CSV"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "lineCountExplorer.refreshCounts",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "lineCountExplorer.refreshCounts",
+          "group": "navigation",
+          "when": "config.lineCountExplorer.enabled"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Line Count Explorer",
+      "properties": {
+        "lineCountExplorer.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable Line Count Explorer"
+        },
+        "lineCountExplorer.countMode": {
+          "type": "string",
+          "default": "lines",
+          "enum": [
+            "lines",
+            "tokens"
+          ],
+          "description": "Count mode: lines or tokens"
+        },
+        "lineCountExplorer.supportedExtensions": {
+          "type": "array",
+          "default": [
+            ".js",
+            ".ts",
+            ".py",
+            ".html",
+            ".css"
+          ],
+          "description": "File extensions to analyze"
+        },
+        "lineCountExplorer.presets": {
+          "type": "object",
+          "default": {},
+          "description": "User-defined presets for quick configuration",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["countMode", "supportedExtensions", "thresholds"],
+            "properties": {
+              "countMode": {
+                "type": "string",
+                "enum": ["lines", "tokens"],
+                "description": "Counting mode for this preset"
+              },
+              "supportedExtensions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "File extensions to analyze for this preset"
+              },
+              "thresholds": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["value", "indicator", "description"],
+                  "properties": {
+                    "value": {
+                      "type": "number",
+                      "description": "Threshold value"
+                    },
+                    "indicator": {
+                      "type": "string",
+                      "description": "Visual indicator for this threshold"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Description of this threshold"
+                    }
+                  }
+                }
+              },
+              "indicatorSymbolSet": {
+                "type": "string",
+                "description": "The symbol set used for indicators"
+              }
+            }
+          }
+        },
+        "lineCountExplorer.selectedPreset": {
+          "type": "string",
+          "default": "default",
+          "description": "Currently selected preset configuration"
+        },
+        "lineCountExplorer.indicatorSymbolSet": {
+          "type": "string",
+          "default": "Colored Circles",
+          "description": "The symbol set to use for threshold indicators"
+        },
+        "lineCountExplorer.thresholds": {
+          "type": "array",
+          "default": [
+            {
+              "value": 0,
+              "indicator": "⚪",
+              "description": "Tiny size"
+            },
+            {
+              "value": 100,
+              "indicator": "🔵",
+              "description": "Small size"
+            },
+            {
+              "value": 500,
+              "indicator": "🟢",
+              "description": "Medium size"
+            },
+            {
+              "value": 1000,
+              "indicator": "🟡",
+              "description": "Medium-large size"
+            },
+            {
+              "value": 2000,
+              "indicator": "🟠",
+              "description": "Approaching large size"
+            },
+            {
+              "value": 5000,
+              "indicator": "🔴",
+              "description": "Large, consider splitting"
+            },
+            {
+              "value": 10000,
+              "indicator": "⛔",
+              "description": "Very large, should be split"
+            }
+          ],
+          "description": "Line/token count thresholds with indicators"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run copy-fixtures",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish",
+    "copy-fixtures": "powershell -Command \"if (!(Test-Path './out/test/fixtures')) { mkdir './out/test/fixtures' }; cp 'src/test/fixtures/test-file.txt' './out/test/fixtures/'\""
+  },
+  "devDependencies": {
+    "@types/assert": "^1.5.6",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^16.18.34",
+    "@types/vscode": "^1.80.0",
+    "@vscode/test-electron": "^2.3.2",
+    "assert": "^2.0.0",
+    "glob": "^10.2.6",
+    "mocha": "^10.2.0",
+    "typescript": "^5.1.3",
+    "vsce": "1.97.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dmytrove/line-count-explorer"
+  },
+  "homepage": "https://github.com/dmytrove/line-count-explorer/blob/main/README.md",
+  "bugs": {
+    "url": "https://github.com/dmytrove/line-count-explorer/issues"
+  },
+  "license": "MIT",
+  "sponsor": {
+    "url": "https://github.com/sponsors/dmytrove"
+  }
+}

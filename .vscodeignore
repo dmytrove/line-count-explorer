@@ -1,0 +1,15 @@
+.vscode/**
+.github/**
+src/**
+test/**
+.gitignore
+tsconfig.json
+**/tsconfig.json
+**/*.map
+.eslintrc.json
+*.vsix
+*.tgz
+.npmrc
+commit.bat
+node_modules/**
+out/test/**
