@@ -11,6 +11,12 @@ A Visual Studio Code extension that adds line and token count decorations to you
 - 🚀 Quick preset selection
 - 📈 Status bar integration
 
+## Screenshots
+
+![alt text](assets/screenshot1.png)
+![alt text](assets/screenshot2.png)
+
+
 ## Quick Start
 
 1. Install the extension from the VS Code Marketplace

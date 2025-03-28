@@ -1,0 +1,41 @@
+{
+    "lineCountExplorer.thresholds": [
+        {
+            "value": 0,
+            "indicator": "一",
+            "description": "Pure joy (tiny, perfect file)"
+        },
+        {
+            "value": 100,
+            "indicator": "二",
+            "description": "Happy (small, manageable file)"
+        },
+        {
+            "value": 250,
+            "indicator": "三",
+            "description": "Thoughtful (medium file, requires focus)"
+        },
+        {
+            "value": 400,
+            "indicator": "四",
+            "description": "Neutral (medium-large file, getting concerned)"
+        },
+        {
+            "value": 600,
+            "indicator": "五",
+            "description": "Worried (large file, needs attention)"
+        },
+        {
+            "value": 800,
+            "indicator": "六",
+            "description": "Anxious (very large file, refactoring needed)"
+        },
+        {
+            "value": 1000,
+            "indicator": "七",
+            "description": "Mind blown (massive file, immediate action required)"
+        }
+    ],
+    "lineCountExplorer.indicatorSymbolSet": "CJK Numerals",
+    "lineCountExplorer.enabled": true
+}
