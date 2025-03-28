@@ -233,7 +233,7 @@
     "test": "node ./out/test/runTest.js",
     "package": "vsce package",
     "publish": "vsce publish",
-    "copy-fixtures": "powershell -Command \"if (!(Test-Path './out/test/fixtures')) { mkdir './out/test/fixtures' }; cp 'src/test/fixtures/test-file.txt' './out/test/fixtures/'\""
+    "copy-fixtures": "node scripts/copy-fixtures.js"
   },
   "devDependencies": {
     "@types/assert": "^1.5.11",
