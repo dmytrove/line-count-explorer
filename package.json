@@ -2,7 +2,7 @@
   "name": "line-count-explorer",
   "displayName": "Line Count Explorer",
   "description": "Visualize file and directory line/token counts directly in the VS Code explorer, helping you identify large files and manage project complexity.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "publisher": "dmytrove",
   "icon": "assets/icon.png",
   "galleryBanner": {
@@ -49,6 +49,11 @@
         "title": "Line Count Explorer: Toggle Extension"
       },
       {
+        "command": "lineCountExplorer.cancelIndexing",
+        "title": "Line Count Explorer: Cancel Indexing Operation",
+        "icon": "$(stop)"
+      },
+      {
         "command": "lineCountExplorer.saveCurrentConfigAsPreset",
         "title": "Line Count Explorer: Save Current Config as Preset"
       },
@@ -63,6 +68,11 @@
       {
         "command": "lineCountExplorer.setCustomThresholds",
         "title": "Line Count Explorer: Set Custom Thresholds"
+      },
+      {
+        "command": "lineCountExplorer.clearCaches",
+        "title": "Line Count Explorer: Clear Caches",
+        "icon": "$(clear-all)"
       },
       {
         "command": "lineCountExplorer.importSymbolSetsFromCsv",
