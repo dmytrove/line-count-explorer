@@ -31,86 +31,134 @@ export class LineCounterManager {
       return;
     }
 
-    // Use setTimeout to perform indexing asynchronously
-    setTimeout(() => {
-      try {
-        workspaceFolders.forEach(folder => {
-          this.indexDirectory(folder.uri.fsPath, forceRefresh);
-        });
-      } catch (error) {
-        console.error('Error during indexing:', error);
-      } finally {
+    // Use the workspace API to find files
+    Promise.all(workspaceFolders.map(folder => this.indexWorkspaceFolder(folder, forceRefresh)))
+      .then(() => {
         this.isIndexing = false;
-      }
-    }, 0);
+      })
+      .catch(error => {
+        console.error('Error during indexing:', error);
+        this.isIndexing = false;
+      });
   }
 
-  private indexDirectory(dirPath: string, forceRefresh: boolean = false): DirectoryLineCount {
-    const cachedResult = this.directoryCache.get(dirPath);
-    if (cachedResult && !forceRefresh) return cachedResult;
-
-    const children: (FileLineCount | DirectoryLineCount)[] = [];
-    let totalLineCount = 0;
-    let totalTokenCount = 0;
-
-    try {
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-      
-      for (const entry of entries) {
-        const fullPath = path.join(dirPath, entry.name);
-        
-        if (entry.isDirectory()) {
-          const dirCount = this.indexDirectory(fullPath);
-          children.push(dirCount);
-          totalLineCount += dirCount.totalLineCount;
-          totalTokenCount += dirCount.totalTokenCount;
-        } else if (this.isValidFile(fullPath)) {
-          const fileCount = this.countLines(fullPath, forceRefresh);
-          children.push(fileCount);
-          totalLineCount += fileCount.lineCount;
-          totalTokenCount += fileCount.tokenCount;
-        }
-      }
-    } catch (error) {
-      console.error(`Error indexing directory ${dirPath}:`, error);
-    }
-
-    const indicator = this.getIndicator(totalLineCount);
-    const directoryCount: DirectoryLineCount = {
-      path: dirPath,
-      totalLineCount,
-      totalTokenCount,
-      children
+  private async indexWorkspaceFolder(folder: vscode.WorkspaceFolder, forceRefresh: boolean = false): Promise<void> {
+    const folderPath = folder.uri.fsPath;
+    
+    // Find all files in workspace using VS Code's workspace API
+    const fileExtensionsPattern = this.config.supportedExtensions.map(ext => `**/*${ext}`);
+    
+    // Create exclude patterns for common directories to ignore
+    const excludePattern = {
+      '**/node_modules/**': true,
+      '**/.git/**': true,
+      '**/dist/**': true,
+      '**/build/**': true,
+      '**/out/**': true
     };
 
-    this.directoryCache.set(dirPath, directoryCount);
-    return directoryCount;
+    // Find all files matching extension patterns and not excluded
+    const fileUris = await vscode.workspace.findFiles(
+      `{${fileExtensionsPattern.join(',')}}`,
+      JSON.stringify(excludePattern)
+    );
+
+    // Process each file
+    for (const uri of fileUris) {
+      const filePath = uri.fsPath;
+      
+      // Skip files that are too large
+      try {
+        const stats = fs.statSync(filePath);
+        if (stats.size > this.MAX_FILE_SIZE) {
+          continue;
+        }
+      } catch (error) {
+        continue; // Skip if can't read stats
+      }
+      
+      // Count lines in file
+      this.countLines(filePath, forceRefresh);
+    }
+
+    // Build directory structure from file information
+    this.buildDirectoryStructure(folderPath);
   }
 
-  private isValidFile(filePath: string): boolean {
-    const ext = path.extname(filePath);
+  private buildDirectoryStructure(rootPath: string): void {
+    // Map to track directories and their contents
+    const dirMap = new Map<string, DirectoryLineCount>();
     
-    // Skip node_modules, .git, and other common directories to ignore
-    if (filePath.includes('node_modules') || 
-        filePath.includes('.git') || 
-        filePath.includes('dist') || 
-        filePath.includes('build') || 
-        filePath.includes('out')) {
-      return false;
-    }
+    // Initialize with root directory
+    dirMap.set(rootPath, {
+      path: rootPath,
+      totalLineCount: 0,
+      totalTokenCount: 0,
+      children: []
+    });
     
-    // Check file size before processing (skip files larger than MAX_FILE_SIZE)
-    try {
-      const stats = fs.statSync(filePath);
-      if (stats.size > this.MAX_FILE_SIZE) { // 5MB
-        return false;
+    // Add all parent directories to the map
+    for (const [filePath, fileCount] of this.fileCache.entries()) {
+      let currentDir = path.dirname(filePath);
+      
+      // Skip if file is not under the root path
+      if (!currentDir.startsWith(rootPath)) {
+        continue;
       }
-    } catch (error) {
-      // If we can't get file stats, skip it
-      return false;
+      
+      // Ensure all parent directories exist in the map
+      while (currentDir !== rootPath && !dirMap.has(currentDir)) {
+        dirMap.set(currentDir, {
+          path: currentDir,
+          totalLineCount: 0,
+          totalTokenCount: 0,
+          children: []
+        });
+        
+        // Move up to parent directory
+        const parentDir = path.dirname(currentDir);
+        
+        // Add this directory as a child to its parent
+        const parentDirInfo = dirMap.get(parentDir);
+        if (parentDirInfo) {
+          // Check if child already exists in parent
+          const existingChild = parentDirInfo.children.find(child => child.path === currentDir);
+          if (!existingChild) {
+            parentDirInfo.children.push(dirMap.get(currentDir)!);
+          }
+        }
+        
+        currentDir = parentDir;
+      }
+      
+      // Add file to its immediate parent directory
+      const parentDir = path.dirname(filePath);
+      const parentDirInfo = dirMap.get(parentDir);
+      
+      if (parentDirInfo) {
+        // Check if file already exists in parent
+        const existingFile = parentDirInfo.children.find(child => child.path === filePath);
+        if (!existingFile) {
+          parentDirInfo.children.push(fileCount);
+        }
+        
+        // Update directory counts
+        let currentDir = parentDir;
+        while (dirMap.has(currentDir)) {
+          const dirInfo = dirMap.get(currentDir)!;
+          dirInfo.totalLineCount += fileCount.lineCount;
+          dirInfo.totalTokenCount += fileCount.tokenCount;
+          
+          if (currentDir === rootPath) break;
+          currentDir = path.dirname(currentDir);
+        }
+      }
     }
     
-    return this.config.supportedExtensions.includes(ext);
+    // Save directory info to cache
+    for (const [dirPath, dirInfo] of dirMap.entries()) {
+      this.directoryCache.set(dirPath, dirInfo);
+    }
   }
 
   private countLines(filePath: string, forceRefresh: boolean = false): FileLineCount {

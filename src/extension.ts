@@ -82,10 +82,19 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   // Add a configuration for ignored patterns
-  // Initial indexing - don't block activation
+  // Initial indexing - don't block activation but start after a delay to allow for UI to load
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      // Reindex when workspace folders change
+      lineCounterManager.startIndexing(true);
+      decorationProvider.refresh();
+    })
+  );
+
+  // Start initial indexing with a short delay
   setTimeout(() => {
     lineCounterManager.startIndexing();
-  }, 2000);
+  }, 1000);
 }
 
 export function deactivate() {
