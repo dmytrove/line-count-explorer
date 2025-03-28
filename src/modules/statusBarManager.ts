@@ -51,6 +51,15 @@ export class StatusBarManager {
         this.updateStatusBar();
       }
     });
+
+    // Listen for indexing state changes
+    this.lineCounterManager.onIndexingStateChanged(isIndexing => {
+      if (isIndexing) {
+        this.showIndexingInProgress();
+      } else {
+        this.showIndexingComplete();
+      }
+    });
   }
 
   private updateStatusBar() {
@@ -60,11 +69,12 @@ export class StatusBarManager {
 
     // Update main status bar item
     if (isEnabled) {
-      this.statusBarItem.text = `$(file-code) Indexing Files`;
-      this.statusBarItem.tooltip = 'Line Count Explorer: Click to toggle';
-      
-      // Show the indexing animation
-      this.showIndexingProgress();
+      // Check if currently indexing
+      if (this.lineCounterManager.isCurrentlyIndexing()) {
+        this.showIndexingInProgress();
+      } else {
+        this.showIndexingComplete();
+      }
       
       // Show the preset status bar item when enabled
       this.presetStatusBarItem.show();
@@ -86,32 +96,17 @@ export class StatusBarManager {
     }
   }
 
-  private showIndexingProgress() {
+  private showIndexingInProgress() {
     // Set indexing indicator
     this.statusBarItem.text = `$(sync~spin) Indexing Files`;
-    this.statusBarItem.tooltip = 'Line Count Explorer: Indexing in progress...';
+    this.statusBarItem.tooltip = 'Line Count Explorer: Indexing in progress... Click to cancel';
     this.refreshStatusBarItem.hide(); // Hide refresh button during indexing
-    
-    // Start the actual indexing process
-    this.lineCounterManager.startIndexing();
-    
-    // Check every 500ms if indexing is complete
-    const checkInterval = setInterval(() => {
-      if (!(this.lineCounterManager as any).isIndexing) { // Access private property
-        clearInterval(checkInterval);
-        this.statusBarItem.text = `$(check) Line Count Explorer`;
-        this.statusBarItem.tooltip = 'Line Count Explorer: Click to toggle';
-        this.refreshStatusBarItem.show(); // Show refresh button when done
-      }
-    }, 500);
-    
-    // Safety timeout after 30 seconds
-    setTimeout(() => {
-      clearInterval(checkInterval);
-      this.statusBarItem.text = `$(check) Line Count Explorer`;
-      this.statusBarItem.tooltip = 'Line Count Explorer: Click to toggle';
-      this.refreshStatusBarItem.show();
-    }, 30000);
+  }
+
+  private showIndexingComplete() {
+    this.statusBarItem.text = `$(check) Line Count Explorer`;
+    this.statusBarItem.tooltip = 'Line Count Explorer: Click to toggle';
+    this.refreshStatusBarItem.show(); // Show refresh button when done
   }
 
   dispose() {

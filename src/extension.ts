@@ -30,13 +30,20 @@ export function activate(context: vscode.ExtensionContext) {
       lineCounterManager.updateConfig(currentConfig);
       lineCounterManager.startIndexing(true); // Force refresh
       decorationProvider.refresh();
-      vscode.window.showInformationMessage('Line Count Explorer: Refreshed counts');
     }),
     vscode.commands.registerCommand('lineCountExplorer.quickSelectPreset', () => {
       configManager.quickSelectPreset();
     }),
     vscode.commands.registerCommand('lineCountExplorer.toggleExtension', () => {
+      // If currently indexing, cancel the indexing operation
+      if (lineCounterManager.isCurrentlyIndexing()) {
+        lineCounterManager.cancelIndexing();
+      }
       configManager.toggleExtension();
+    }),
+    vscode.commands.registerCommand('lineCountExplorer.cancelIndexing', () => {
+      lineCounterManager.cancelIndexing();
+      vscode.window.showInformationMessage('Line Count Explorer: Indexing canceled');
     }),
     vscode.commands.registerCommand('lineCountExplorer.saveCurrentConfigAsPreset', () => {
       configManager.saveCurrentConfigAsPreset();
@@ -49,6 +56,10 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand('lineCountExplorer.setCustomThresholds', () => {
       configManager.setCustomThresholds();
+    }),
+    vscode.commands.registerCommand('lineCountExplorer.clearCaches', () => {
+      lineCounterManager.clearCaches();
+      vscode.window.showInformationMessage('Line Count Explorer: Caches cleared');
     }),
     vscode.commands.registerCommand('lineCountExplorer.importSymbolSetsFromCsv', () => {
       configManager.importSymbolSetsFromCsv();
@@ -72,6 +83,11 @@ export function activate(context: vscode.ExtensionContext) {
         const updatedConfig = configManager.getConfig();
         lineCounterManager.updateConfig(updatedConfig);
         
+        // If currently indexing, cancel it before starting again
+        if (lineCounterManager.isCurrentlyIndexing()) {
+          lineCounterManager.cancelIndexing();
+        }
+        
         // Refresh indexing
         lineCounterManager.startIndexing();
         
@@ -81,22 +97,40 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Add a configuration for ignored patterns
-  // Initial indexing - don't block activation but start after a delay to allow for UI to load
+  // Add event handler for workspace folder changes
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      // If currently indexing, cancel it before starting again
+      if (lineCounterManager.isCurrentlyIndexing()) {
+        lineCounterManager.cancelIndexing();
+      }
+      
       // Reindex when workspace folders change
       lineCounterManager.startIndexing(true);
       decorationProvider.refresh();
     })
   );
 
-  // Start initial indexing with a short delay
+  // Register with the extension context to properly dispose
+  context.subscriptions.push({
+    dispose: () => {
+      // Cancel any ongoing indexing
+      lineCounterManager.cancelIndexing();
+      // Clear caches to free memory
+      lineCounterManager.clearCaches();
+    }
+  });
+
+  // Start initial indexing with a short delay to allow for UI to load
+  // but prioritize visible files for better user experience
   setTimeout(() => {
-    lineCounterManager.startIndexing();
+    const isEnabled = vscode.workspace.getConfiguration('lineCountExplorer').get('enabled', true);
+    if (isEnabled) {
+      lineCounterManager.startIndexing();
+    }
   }, 1000);
 }
 
 export function deactivate() {
-  // Cleanup logic if needed
+  // Cleanup already handled through the context subscriptions
 }
